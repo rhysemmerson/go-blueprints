@@ -1,0 +1,92 @@
+<html>
+	<head>
+		<title>Chat</title>
+
+		<style>
+
+			html, body, .wrap {
+				height: 100%;
+			}
+
+			.wrap {
+				display: flex;
+				justify-content: center;
+				align-items: center;
+			}
+			input { display: block; }
+			ul { list-style: none; }
+			.Messages__avatar {
+				vertical-align: middle;
+				width: 50px;
+				height: auto;
+			}
+		</style>
+	</head>
+	<body>
+		<div class="wrap">
+			<div class="main">
+				<ul id="Messages"></ul>
+
+				<form id="Chatbox">
+					{{.UserData.name}}:<br/>
+					<textarea id="Chatbox__message"></textarea>
+					<input type="submit" value="Send" />
+					or <a href="/logout">Logout</a>
+				</form>
+			</div>
+		</div>
+		<script>
+			(function() {
+				if (!window["WebSocket"]) {
+					console.error("No support for websocket detected");
+					return;
+				}
+
+				var form = document.getElementById("Chatbox"), 
+					msgBox = document.getElementById("Chatbox__message"), 
+					messages = document.getElementById("Messages");
+
+				var socket = new WebSocket("ws://{{.Host}}/room");
+				socket.onclose = function() {
+					console.info("Connection has been closed");
+				}
+				socket.onmessage = function(ev) {
+					var msg = JSON.parse(ev.data);
+
+					var item = document.createElement("li"),
+						name = document.createElement("strong"),
+						message = document.createElement("span"),
+						avatar = document.createElement("img");
+
+					name.innerHTML = msg.Name + ": ";
+					message.innerHTML = msg.Message;
+					avatar.setAttribute("src", msg.AvatarURL)
+					avatar.setAttribute("class", "Messages__avatar");
+
+					if (msg.AvatarURL) item.appendChild(avatar);
+					item.appendChild(name);
+					item.appendChild(message);
+					messages.appendChild(item);
+				}
+
+				form.addEventListener("submit", function(ev) {
+					ev.preventDefault();
+
+					var message = msgBox.value;
+
+					if (message.length < 1) {
+						return;
+					}
+
+					if (!socket) {
+						console.error("Not connected");
+						return;
+					}
+
+					socket.send(JSON.stringify({"Message": message}));
+					msgBox.value = "";
+				});
+			})();
+		</script>
+	</body>
+</html>

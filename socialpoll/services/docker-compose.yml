@@ -1,0 +1,55 @@
+version: '3.3'
+services:
+  votes:
+    image: ubuntu
+    command: /app/twittervotes --nsqd-http-address=nsqd:4150 --db-address=db:27017
+    env_file:
+      - ./bin/.env
+    volumes:
+      - ./certs:/etc/ssl/certs
+      - ./bin:/app
+    depends_on:
+      - nsqd
+      - db
+  counter:
+    image: alpine
+    command: /app/twittercounter --nsqlookupd-http-address=nsqlookupd:4161 --db-address=db:27017
+    volumes:
+      - ./certs:/etc/ssl/certs
+      - ./bin:/app
+    deploy:
+      mode: replicated
+      replicas: 3
+    depends_on:
+      - nsqlookupd
+      - db
+  db:
+    image: mongo
+    volumes: 
+      - db:/data/db
+    restart: always
+    ports:
+      - "27017:27017"
+  nsqlookupd:
+    image: nsqio/nsq
+    command: /nsqlookupd
+    ports:
+      - "4160:4160"
+      - "4161:4161"
+  nsqd:
+    image: nsqio/nsq
+    command: /nsqd --lookupd-tcp-address=nsqlookupd:4160
+    depends_on:
+      - nsqlookupd
+    ports:
+      - "4150:4150"
+      - "4151:4151"
+  nsqadmin:
+    image: nsqio/nsq
+    command: /nsqadmin --lookupd-http-address=nsqlookupd:4161
+    depends_on:
+      - nsqlookupd  
+    ports:
+      - "4171:4171"
+volumes:
+  db:
